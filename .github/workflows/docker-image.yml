@@ -35,7 +35,7 @@ jobs:
         run: composer test
 
       - name: Configurar credenciais AWS
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-access-key-id: 737990545696
           aws-secret-access-key: KaiFederMart2004
