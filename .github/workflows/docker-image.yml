@@ -4,7 +4,8 @@ on:
   push:
     branches:
       - main
-env:              
+env:             
+  AWS_REGION: ${ { secrets.AWS_REGION }} 
   ECR_REPOSITORY: ${ { secrets.ECR_REPOSITORY }}         
   ECS_SERVICE: ${ { secrets.ECS_SERVICE }}              
   ECS_CLUSTER: ${ { secrets.ECS_CLUSTER }}                
@@ -42,7 +43,8 @@ jobs:
         with:
           aws-access-key-id: $AWS_ACCESS_KEY_ID
           aws-secret-access-key: $AWS_SECRET_ACCESS_KEY
-          aws-region: us-east-1
+          aws-region: $AWS_REGION
+
       - name: Login no Amazon ECR
         uses: aws-actions/amazon-ecr-login@v1
 
