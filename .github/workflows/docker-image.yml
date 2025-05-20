@@ -38,12 +38,7 @@ jobs:
       - name: Rodar testes com PHPUnit
         run: composer test
 
-      - name: Configurar credenciais AWS
-        uses: aws-actions/configure-aws-credentials@v3
-        with:
-          aws-access-key-id: $AWS_ACCESS_KEY_ID
-          aws-secret-access-key: $AWS_SECRET_ACCESS_KEY
-          aws-region: $AWS_REGION
+     
 
       - name: Login no Amazon ECR
         uses: aws-actions/amazon-ecr-login@v1
@@ -51,7 +46,7 @@ jobs:
       - name: Construir imagem Docker
         run: |
           docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
-          docker tag $ECR_REPOSITORY:$IMAGE_TAG $aws-access-key-id.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
+          docker tag $ECR_REPOSITORY:$IMAGE_TAG $aws-access-key-id.dkr.ecr.us-east-2.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Fazer push para o Amazon ECR
         run: |
