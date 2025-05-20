@@ -18,7 +18,6 @@ jobs:
     runs-on: ubuntu-latest  
     env:
       ECR_REPOSITORY: $ECR_REPOSITORY
-      AWS_REGION: $AWS_REGION
       IMAGE_TAG: ${{ github.sha }}
       
     steps:
