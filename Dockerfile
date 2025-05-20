@@ -1,4 +1,11 @@
-FROM docker/whalesay:latest
-LABEL Name=meuprojetophpcicd Version=0.0.1
-RUN apt-get -y update && apt-get install -y fortunes
-CMD ["sh", "-c", "/usr/games/fortune -a | cowsay"]
+FROM php:8.2-cli
+
+WORKDIR /var/www
+
+COPY . .
+
+RUN apt-get update && apt-get install -y unzip git \
+    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
+    && composer install
+
+CMD ["php", "index.php"]
