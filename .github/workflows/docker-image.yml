@@ -5,20 +5,14 @@ on:
     branches:
       - main
 env:             
-  AWS_REGION: ${ { secrets.AWS_REGION }} 
   ECR_REPOSITORY: ${ { secrets.ECR_REPOSITORY }}         
   ECS_SERVICE: ${ { secrets.ECS_SERVICE }}              
   ECS_CLUSTER: ${ { secrets.ECS_CLUSTER }}                
-  ECS_TASK_DEFINITION: ${ { secrets.ECS_TASK_DEFINITION }} 
-  AWS_ACCESS_KEY_ID: ${ { secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${ { secrets.AWS_SECRET_ACCESS_KEY }}
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest  
-    env:
-      IMAGE_TAG: ${{ github.sha }}
-      
     steps:
       - name: Checkout do código
         uses: actions/checkout@v3
@@ -37,32 +31,41 @@ jobs:
 
       - name: Rodar testes com PHPUnit
         run: composer test
-
-     
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+          aws-region: us-east-2
 
       - name: Login no Amazon ECR
+        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
       - name: Construir imagem Docker
-        run: |
-          docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
-          docker tag $ECR_REPOSITORY:$IMAGE_TAG $aws-access-key-id.dkr.ecr.us-east-2.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{steps.login-ecr.outputs.registry}}
+          ECR_REPOSITORY: ci-cd-nuvem
+          IMAGE_TAG: ${{ github.sha }}
+        run: 
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-      - name: Fazer push para o Amazon ECR
-        run: |
-          docker push $aws-access-key-id.dkr.ecr.$ECR_REPOSITORY.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
-      
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: taskdefinition.json
+          container-name: app-php
+          image: ${{ steps.build-image.outputs.image }}
+
       - name: Deploy to ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
-          task-definition: $ECS_TASK_DEFINITION
+          task-definition: ${{steps.task-def.outputs.taskdefinition}}
           service: $ECS_SERVICE
           cluster: $ECS_CLUSTER
           wait-for-service-stability: true
-
-      - name: Update ECS Service
-        run:
-          aws ecs update-service \
-          --cluster $ECS_CLUSTER \
-          --service $ECS_SERVICE \
-          --force-new-deployment
