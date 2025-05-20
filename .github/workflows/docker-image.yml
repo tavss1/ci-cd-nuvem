@@ -13,6 +13,8 @@ jobs:
           php-version: '8.2'
       - name: Install dependencies
         run: composer install
+      - name: Dar permissão ao PHPUnit
+        run: chmod +x vendor/bin/phpunit
       - name: Run tests
         run: composer test
   docker:
