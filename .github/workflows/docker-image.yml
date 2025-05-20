@@ -1,48 +1,51 @@
-name: CI/CD
+name: CI/CD - Docker para AWS ECR
+
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+  pull_request:
+
 jobs:
-  test:
+  build-and-deploy:
     runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: us-east-2
+      ECR_REPOSITORY: 737990545696.dkr.ecr.us-east-2.amazonaws.com/ci-cd-nuvem
+      IMAGE_TAG: ${{ github.sha }}
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup PHP
+      - name: Checkout do código
+        uses: actions/checkout@v3
+
+      - name: Setup do PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-      - name: Install dependencies
-        run: composer install
-      - name: Dar permissão ao PHPUnit
-        run: chmod +x vendor/bin/phpunit
-      - name: Run tests
+          coverage: none
+
+      - name: Instalar dependências PHP
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Rodar testes com PHPUnit
         run: composer test
-  docker:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Log in to Amazon ECR
+
+      - name: Configurar credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: 737990545696
+          aws-secret-access-key: KaiFederMart2004
+          aws-region: us-east-2
+
+      - name: Login no Amazon ECR
         uses: aws-actions/amazon-ecr-login@v1
-      - name: Build and push Docker image
-        env:
-          ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
-          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-          IMAGE_TAG: ${{ github.sha }}
+
+      - name: Construir imagem Docker
         run: |
           docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
-          docker tag $ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-      - name: Deploy to ECS
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-        with:
-          task-definition: ecs-task-def.json
-          service: meu-servico
-          cluster: meu-cluster
-          wait-for-service-stability: true
-      - name: Update ECS Service
-        run:
-          aws ecs update-service \
-          --cluster meu-projeto-cluster \
-          --service meu-projeto-servico \
-          --force-new-deployment
+          docker tag $ECR_REPOSITORY:$IMAGE_TAG $aws-access-key-id.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Fazer push para o Amazon ECR
+        run: |
+          docker push $aws-acess-key-id.dkr.ecr.$ECR_REPOSITORY.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
